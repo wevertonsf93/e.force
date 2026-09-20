@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Criador de Filtros e.force (Print SIGOD)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    .drag-active { border-color: #0284c7 !important; background-color: rgba(2, 132, 199, 0.1) !important; }
+    #debugLogs { font-size: 0.75rem; }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen font-sans p-4 sm:p-6 md:p-8">
+
+  <div class="max-w-6xl mx-auto space-y-6">
+    <header class="text-center space-y-2">
+      <div class="flex items-center justify-center gap-3">
+        <span class="px-2.5 py-1 bg-sky-500/10 text-sky-400 border border-sky-500/20 rounded-md text-xs font-bold tracking-wider uppercase">SIGOD &rarr; e.force</span>
+      </div>
+      <h1 class="text-3xl font-bold tracking-tight text-white flex items-center justify-center gap-3">
+        <i data-lucide="filter" class="w-8 h-8 text-sky-400"></i>
+        Criador de Filtros e.force
+      </h1>
+      <p class="text-slate-400 text-sm max-w-xl mx-auto">
+        Selecione as Ordens de Serviço no SIGOD, tire o print e cole (<kbd class="px-2 py-0.5 bg-slate-800 text-sky-300 rounded border border-slate-700 font-mono text-xs">Ctrl + V</kbd>) para gerar a instrução pronta para o e.force.
+      </p>
+    </header>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- Coluna 1: Entrada do Print SIGOD -->
+      <div class="space-y-4 lg:col-span-1">
+        <div id="dropZone" class="border-2 border-dashed border-slate-700 hover:border-slate-500 rounded-xl p-6 text-center cursor-pointer transition-all bg-slate-800/50 relative min-h-[220px] flex flex-col items-center justify-center">
+          <input type="file" id="fileInput" accept="image/*" class="hidden">
+          <div id="dropContent" class="space-y-3">
+            <div class="w-14 h-14 rounded-full bg-sky-500/10 text-sky-400 flex items-center justify-center mx-auto border border-sky-500/20">
+              <i data-lucide="clipboard-paste" class="w-7 h-7"></i>
+            </div>
+            <div>
+              <p class="font-medium text-slate-200">Cole o print do SIGOD aqui</p>
+              <p class="text-xs text-sky-400 font-semibold mt-1">✓ Pressione Ctrl + V ou clique para enviar</p>
+            </div>
+          </div>
+          <div id="previewContainer" class="hidden w-full space-y-2">
+            <img id="imagePreview" class="max-h-56 mx-auto rounded border border-slate-700 object-contain shadow-lg" alt="Preview do Print SIGOD">
+            <button id="removeImgBtn" type="button" class="text-xs text-rose-400 hover:text-rose-300 flex items-center gap-1 mx-auto pt-1">
+              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Remover imagem
+            </button>
+          </div>
+        </div>
+
+        <button id="processBtn" disabled class="w-full py-3 px-4 bg-sky-600 hover:bg-sky-500 disabled:bg-slate-800 disabled:text-slate-600 text-white font-medium rounded-xl shadow-lg flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed">
+          <i data-lucide="wand-2" class="w-5 h-5"></i>
+          <span>Gerar Filtro e.force</span>
+        </button>
+      </div>
+
+      <!-- Coluna 2: Filtro Gerado -->
+      <div class="bg-slate-800/80 rounded-xl p-5 border border-slate-700/60 flex flex-col space-y-4 lg:col-span-1">
+        <div class="flex items-center justify-between">
+          <label class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+            <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400"></i> Filtro Pronto (e.force)
+          </label>
+          <span id="countBadge" class="hidden text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-medium border border-emerald-500/30">
+            0 OSs selecionadas
+          </span>
+        </div>
+
+        <div id="progressContainer" class="hidden space-y-2 py-2">
+          <div class="flex justify-between text-xs text-slate-300">
+            <span id="statusText">Lendo linhas selecionadas no SIGOD...</span>
+            <span id="progressPercent">--</span>
+          </div>
+          <div class="w-full bg-slate-700 h-2 rounded-full overflow-hidden">
+            <div id="progressBar" class="bg-sky-500 h-full w-full animate-pulse"></div>
+          </div>
+        </div>
+
+        <div class="relative flex-1 min-h-[250px]">
+          <textarea id="resultOutput" readonly placeholder="O comando numos in (...) gerado aparecerá aqui..." class="w-full h-full p-3 bg-slate-900 border border-slate-700/80 rounded-lg text-emerald-400 font-mono text-sm resize-none focus:outline-none"></textarea>
+        </div>
+
+        <div class="flex items-center gap-3 pt-2">
+          <button id="copyBtn" disabled class="flex-1 py-2.5 px-4 bg-sky-600 hover:bg-sky-500 disabled:opacity-50 text-white text-sm font-medium rounded-lg flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed shadow">
+            <i data-lucide="copy" class="w-4 h-4"></i> <span id="copyBtnText">Copiar Filtro</span>
+          </button>
+          <button id="clearBtn" class="py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-slate-400 text-sm font-medium rounded-lg border border-slate-700 cursor-pointer">
+            Limpar
+          </button>
+        </div>
+      </div>
+
+      <!-- Coluna 3: Debug Logs -->
+      <div class="bg-slate-900 rounded-xl p-4 border border-slate-700/60 flex flex-col space-y-3 lg:col-span-1">
+        <label class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+          <i data-lucide="terminal" class="w-4 h-4 text-purple-400"></i> Debug Logs
+        </label>
+        <div id="debugLogs" class="flex-1 overflow-y-auto bg-black/50 rounded border border-slate-800 p-2 font-mono text-slate-300 space-y-1 max-h-[400px]">
+          <div class="text-slate-500">Aguardando captura do SIGOD...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    lucide.createIcons();
+
+    const WORKER_URL = 'https://geminiproxy.wevertonsilvinofelipe.workers.dev';
+
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const imagePreview = document.getElementById('imagePreview');
+    const processBtn = document.getElementById('processBtn');
+    const resultOutput = document.getElementById('resultOutput');
+    const debugLogs = document.getElementById('debugLogs');
+    let currentFile = null;
+
+    window.addEventListener('paste', (e) => {
+      const items = (e.clipboardData || e.originalEvent.clipboardData)?.items;
+      if (!items) return;
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') !== -1) {
+          handleImageSelect(items[i].getAsFile());
+          e.preventDefault(); 
+          break;
+        }
+      }
+    });
+
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-active'); });
+    dropZone.addEventListener('dragleave', e => { e.preventDefault(); dropZone.classList.remove('drag-active'); });
+    dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('drag-active'); if(e.dataTransfer.files.length) handleImageSelect(e.dataTransfer.files[0]); });
+    dropZone.addEventListener('click', e => { if (e.target.id !== 'removeImgBtn') fileInput.click(); });
+    fileInput.addEventListener('change', e => { if(e.target.files.length) handleImageSelect(e.target.files[0]); });
+
+    document.getElementById('removeImgBtn').addEventListener('click', (e) => {
+      e.stopPropagation(); 
+      currentFile = null; 
+      imagePreview.src = ''; 
+      document.getElementById('previewContainer').classList.add('hidden');
+      document.getElementById('dropContent').classList.remove('hidden');
+      processBtn.disabled = true;
+    });
+
+    function handleImageSelect(file) {
+      if (!file || !file.type.startsWith('image/')) return;
+      currentFile = file;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        imagePreview.src = e.target.result;
+        document.getElementById('dropContent').classList.add('hidden');
+        document.getElementById('previewContainer').classList.remove('hidden');
+        processBtn.disabled = false;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function logDebug(msg, type='info') {
+      const color = type === 'error' ? 'text-rose-400' : type === 'success' ? 'text-emerald-400' : type === 'warn' ? 'text-yellow-400' : 'text-slate-300';
+      const div = document.createElement('div');
+      div.className = color;
+      div.textContent = `> ${msg}`;
+      debugLogs.appendChild(div);
+      debugLogs.scrollTop = debugLogs.scrollHeight;
+    }
+
+    function getBase64FromImage(imgElement) {
+      const canvas = document.createElement('canvas');
+      canvas.width = imgElement.naturalWidth || imgElement.width;
+      canvas.height = imgElement.naturalHeight || imgElement.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(imgElement, 0, 0);
+      const dataURL = canvas.toDataURL('image/png');
+      return dataURL.split(',')[1];
+    }
+
+    processBtn.addEventListener('click', async () => {
+      if (!currentFile) return;
+
+      processBtn.disabled = true;
+      document.getElementById('progressContainer').classList.remove('hidden');
+      resultOutput.value = '';
+      debugLogs.innerHTML = '';
+
+      logDebug('Iniciando processamento do print do SIGOD...', 'info');
+
+      try {
+        const base64Data = getBase64FromImage(imagePreview);
+        
+        const promptText = `Analise a imagem fornecida. Localize e extraia apenas os números das Ordens de Serviço presentes em linhas ou células com fundo azul preenchido (destaque de seleção). Ignore linhas com fundo branco, cinza ou de outras cores.
+
+Retorne os números formatados EXATAMENTE sem aspas, segundo este exemplo:
+numos in (1036851832, 20260000325859, 1039113439)`;
+
+        const payload = {
+          contents: [{
+            parts: [
+              { text: promptText },
+              { inline_data: { mime_type: "image/png", data: base64Data } }
+            ]
+          }]
+        };
+
+        logDebug('Enviando imagem ao Worker...', 'info');
+        
+        const response = await fetch(WORKER_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          const errorMsg = data.error?.message || data.error || `Erro HTTP ${response.status}: ${response.statusText}`;
+          throw new Error(errorMsg);
+        }
+
+        logDebug('Resposta recebida com sucesso.', 'success');
+
+        let textResult = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        
+        // Remove blocos de código markdown e garante que aspas simples sejam removidas caso a IA ainda retorne
+        textResult = textResult.replace(/```[a-z]*|```/gi, '').replace(/'/g, '').trim();
+
+        if (textResult) {
+          resultOutput.value = textResult;
+          
+          const matches = textResult.match(/\d+/g) || [];
+          document.getElementById('countBadge').textContent = `${matches.length} OS(s) extraída(s)`;
+          document.getElementById('countBadge').classList.remove('hidden');
+          document.getElementById('copyBtn').disabled = false;
+          logDebug(`Filtro e.force gerado com sucesso!`, 'success');
+        } else {
+          resultOutput.value = 'Nenhum número de OS identificado nas linhas selecionadas.';
+          logDebug('A IA não identificou números em linhas com destaque azul.', 'warn');
+        }
+
+      } catch (err) {
+        logDebug(`Erro no processamento: ${err.message}`, 'error');
+        resultOutput.value = `Erro ao gerar filtro: ${err.message}`;
+      } finally {
+        document.getElementById('progressContainer').classList.add('hidden');
+        processBtn.disabled = false;
+      }
+    });
+
+    document.getElementById('copyBtn').addEventListener('click', () => {
+      if (resultOutput.value) navigator.clipboard.writeText(resultOutput.value).then(() => {
+        const textSpan = document.getElementById('copyBtnText');
+        textSpan.textContent = 'Copiado para o e.force!';
+        setTimeout(() => textSpan.textContent = 'Copiar Filtro', 2000);
+      });
+    });
+
+    document.getElementById('clearBtn').addEventListener('click', () => {
+      resultOutput.value = '';
+      document.getElementById('countBadge').classList.add('hidden');
+      document.getElementById('copyBtn').disabled = true;
+      debugLogs.innerHTML = '<div class="text-slate-500">Aguardando captura do SIGOD...</div>';
+    });
+  </script>
+</body>
+</html>
