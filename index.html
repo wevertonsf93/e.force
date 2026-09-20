@@ -23,7 +23,7 @@
         Criador de Filtros e.force
       </h1>
       <p class="text-slate-400 text-sm max-w-xl mx-auto">
-        Selecione as Ordens de Serviço no SIGOD, tire o print e cole (<kbd class="px-2 py-0.5 bg-slate-800 text-sky-300 rounded border border-slate-700 font-mono text-xs">Ctrl + V</kbd>) para gerar a instrução pronta para o e.force.
+        Selecione as Ordens de Serviço ou ocorrências no SIGOD, tire o print e cole (<kbd class="px-2 py-0.5 bg-slate-800 text-sky-300 rounded border border-slate-700 font-mono text-xs">Ctrl + V</kbd>) para gerar a instrução pronta para o e.force.
       </p>
     </header>
 
@@ -62,7 +62,7 @@
             <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400"></i> Filtro Pronto (e.force)
           </label>
           <span id="countBadge" class="hidden text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-medium border border-emerald-500/30">
-            0 OSs selecionadas
+            0 Serviços selecionadas
           </span>
         </div>
 
@@ -227,7 +227,7 @@ numos in (1036851832, 20260000325859, 1039113439)`;
           resultOutput.value = textResult;
           
           const matches = textResult.match(/\d+/g) || [];
-          document.getElementById('countBadge').textContent = `${matches.length} OS(s) extraída(s)`;
+          document.getElementById('countBadge').textContent = `${matches.length} serviço(s) extraído(s)`;
           document.getElementById('countBadge').classList.remove('hidden');
           document.getElementById('copyBtn').disabled = false;
           logDebug(`Filtro e.force gerado com sucesso!`, 'success');
